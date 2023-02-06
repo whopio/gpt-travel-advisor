@@ -7,7 +7,6 @@ import { useSearchParams } from 'next/navigation';
 import { setCookie, getCookie } from "cookies-next";
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm';
-import { NextPage } from 'next';
 
 const RECOMMENDED_PLAN = process.env.NEXT_PUBLIC_RECOMMENDED_PLAN_ID || "";
 
