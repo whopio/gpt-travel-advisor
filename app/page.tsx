@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { setCookie, getCookie } from "cookies-next";
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm';
+import { NextPage } from 'next';
 
 const RECOMMENDED_PLAN = process.env.NEXT_PUBLIC_RECOMMENDED_PLAN_ID || "";
 
@@ -17,16 +18,13 @@ type PassGatedProps =
       plan: null;
     }
   | {
-      membership: null;
+      membership: null | boolean;
       pass: AccessPass;
       plan: Plan;
-    }
-  | {
-    membership: boolean;
-  }
+    };
 
-export default function Home({membership: initialMembership}: PassGatedProps) {
-  let [membership, setMembership] = useState(initialMembership);
+export default function Home() {
+  let [membership, setMembership] = useState(false);
   const cookieVal = getCookie('membership')
   if (cookieVal && !membership){
     setMembership(true)
