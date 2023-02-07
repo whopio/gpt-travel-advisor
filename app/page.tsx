@@ -3,23 +3,25 @@
 import React, { useState, useEffect } from "react";
 import { usePurchaseLink } from "@/lib/get-purchase-link";
 import { useSearchParams } from 'next/navigation';
-import { setCookie, getCookie } from "cookies-next";
+import { setCookie, getCookie, deleteCookie } from "cookies-next";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { signIn, signOut } from "next-auth/react";
 import { useSession } from "next-auth/react";
+import Router from "next/router";
 
 const RECOMMENDED_PLAN = process.env.NEXT_PUBLIC_RECOMMENDED_PLAN_ID || "";
 
 function signOutButton(){
   signOut()
-  setCookie('membership', false)
+  deleteCookie('membership');
+  deleteCookie('username');
+  deleteCookie('access_token');
 }
 
 export default function Home() {
-  const { data: session } = useSession();
-  const user = session?.user;
-  const access_token = session?.accessToken;
+  let { data: session } = useSession();
+  let access_token = session?.accessToken || getCookie('access_token');
   let [membership, setMembership] = useState(false);
   let [fetch_user, setFetchUser] = useState(false);
   const cookieVal = getCookie('membership')
@@ -28,6 +30,7 @@ export default function Home() {
   }
   const searchParams = useSearchParams();
   const membershipId = searchParams.get('membershipId');
+  const code = searchParams.get('code');
   const [request, setRequest] = useState<{days?: string, city?: string}>({})
   let [itinerary, setItinerary] = useState<string>('')
   const paidLink = usePurchaseLink(RECOMMENDED_PLAN);
@@ -35,16 +38,22 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
 
+  let user = session?.user || getCookie('username');
+
   useEffect(() => {
     if (!membershipId || membership) return;
     fetchMembership();
   }, [membershipId]);
 
-
   useEffect(() => {
     if (!user && !membership) return;
     fetchUserAccess();
   }, [fetch_user]);
+
+  useEffect(() => {
+    if (!code && !membership) return;
+    fetchCodeAccess();
+  }, [code]);
 
   const fetchMembership = async () => {
     const response = await fetch("api/fetchMembership", {
@@ -95,18 +104,51 @@ export default function Home() {
         if (
           responseJson.valid
           ) {
-            setCookie('membership', false)
-            setMembership(false);
-          } else {
             setCookie('membership', true)
             setMembership(true);
+          } else {
+            setCookie('membership', false)
+            setMembership(false);
           }
       })
       .catch((error) => {
         console.error(error);
       });
   };
-  if (user && !membership && !fetch_user){
+
+  const fetchCodeAccess = async () => {
+    const response = await fetch("api/fetchCodeAccess", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ code }),
+    })
+      .then((res) => {
+        if (res.status === 200) {
+          return res.json();
+        }
+        throw new Error("Something went wrong");
+      })
+      .then((responseJson) => {
+        if (responseJson.valid) {
+          setCookie("membership", true);
+          setCookie('username', responseJson.user.username);
+          setCookie('access_token', responseJson.access_token)
+          window.location.reload()
+        } else {
+          if (responseJson.user.username) {
+            setCookie('username', responseJson.user.username);
+            setCookie('access_token', responseJson.access_token);
+          }
+          setCookie("membership", false);
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  };
+  if (user && !fetch_user){
     setFetchUser(true);
   }
 
@@ -168,7 +210,11 @@ export default function Home() {
       <div className="app-container">
         {user ? (
           <div className="top-right">
-            <div className="user-info">{user ? `Signed in as ${user.name}` : ''}</div>
+            {user && typeof user === 'object' ? (
+                <div className="user-info">{`Signed in as ${user.name}`}</div>
+            ) : (
+                <div className="user-info">{`Signed in as ${user}`}</div>
+            )}
             <button className="sign-out" onClick={() => signOutButton()}>Sign Out</button>
           </div>
         ) : (
@@ -189,12 +235,10 @@ export default function Home() {
             }))} />
             <button className="input-button"  onClick={hitAPI}>Build Itinerary</button>
             </>
-            ) : user ? (
+            ) : (
               <a href={paidLink}>
                 <button className="input-button">Get Access for $5</button>
               </a>
-            ) : (
-                <button className="input-button" onClick={() => signIn("whop")}>Sign in with Whop</button>
             )}
         </div>
         <div className="results-container">

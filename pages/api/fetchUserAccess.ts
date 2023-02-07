@@ -7,7 +7,6 @@ export const config = {
 
 const handler = async (req: NextRequest) => {
   const { access_token } = (await req.json()) as { access_token: string };
-
   if (!access_token) {
     return new Response(
       JSON.stringify({ msg: "Access token is empty", data: [] }),
@@ -25,7 +24,7 @@ const handler = async (req: NextRequest) => {
             },
         });
         const membershipData = await checkMembership.json();
-        return new Response(JSON.stringify({ vaid: membershipData.valid }));
+        return new Response(JSON.stringify({ valid: membershipData.valid }));
 
 };
 

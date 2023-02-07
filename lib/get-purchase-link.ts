@@ -6,8 +6,8 @@ const getPurchaseLink = (
   location: URL | string
 ) => {
   const href = new URL(`https://whop.com/checkout/${plan}/`);
-  const onSuccess = new URL(redirect, location);
-  href.searchParams.set("onSuccess", onSuccess.href);
+  const onSuccess = "https://whop.com/hub";
+  href.searchParams.set("onSuccess", onSuccess);
   return href;
 };
 
