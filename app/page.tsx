@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { usePurchaseLink } from "@/lib/get-purchase-link";
 import { useSearchParams } from 'next/navigation';
-import { setCookie, getCookie, deleteCookie } from "cookies-next";
+import { setCookie, getCookie, deleteCookie, hasCookie } from "cookies-next";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { signIn, signOut } from "next-auth/react";
@@ -134,7 +134,7 @@ export default function Home() {
         if (responseJson.valid) {
           setCookie("membership", true);
           setCookie('username', responseJson.user.username);
-          setCookie('access_token', responseJson.access_token)
+          setCookie('access_token', responseJson.access_token);
           window.location.reload()
         } else {
           if (responseJson.user.username) {
@@ -154,6 +154,23 @@ export default function Home() {
 
   async function hitAPI() {
     if (!request.city || !request.days) return
+    const hour = 3600 * 1000; // 3600 seconds in a hour
+    const expires = new Date(Date.now() + hour);
+    if (hasCookie('limit')) {
+      const limit = getCookie('limit');
+      if (limit) {
+        const rate_limit = parseInt(limit.toString(), 10);
+        setCookie('limit', rate_limit + 1);
+        if (rate_limit > 10){
+          setMessage('You have reached your hourly limit, try again in a bit.')
+          setLoading(true)
+          setItinerary('')
+          return
+        }
+      }
+    } else {
+      setCookie('limit',1, { expires: expires })
+    }
     setMessage('Building itinerary...')
     setLoading(true)
     setItinerary('')
