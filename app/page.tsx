@@ -1,29 +1,27 @@
 'use client'
 
 import React, { useState, useEffect } from "react";
-import { AccessPass, Membership, Plan } from "@whop-sdk/core";
 import { usePurchaseLink } from "@/lib/get-purchase-link";
 import { useSearchParams } from 'next/navigation';
 import { setCookie, getCookie } from "cookies-next";
-import ReactMarkdown from 'react-markdown'
+import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { signIn, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 
 const RECOMMENDED_PLAN = process.env.NEXT_PUBLIC_RECOMMENDED_PLAN_ID || "";
 
-type PassGatedProps =
-  | {
-      membership: Membership;
-      pass: null;
-      plan: null;
-    }
-  | {
-      membership: null | boolean;
-      pass: AccessPass;
-      plan: Plan;
-    };
+function signOutButton(){
+  signOut()
+  setCookie('membership', false)
+}
 
 export default function Home() {
+  const { data: session } = useSession();
+  const user = session?.user;
+  const access_token = session?.accessToken;
   let [membership, setMembership] = useState(false);
+  let [fetch_user, setFetchUser] = useState(false);
   const cookieVal = getCookie('membership')
   if (cookieVal && !membership){
     setMembership(true)
@@ -41,6 +39,12 @@ export default function Home() {
     if (!membershipId || membership) return;
     fetchMembership();
   }, [membershipId]);
+
+
+  useEffect(() => {
+    if (!user && !membership) return;
+    fetchUserAccess();
+  }, [fetch_user]);
 
   const fetchMembership = async () => {
     const response = await fetch("api/fetchMembership", {
@@ -72,6 +76,39 @@ export default function Home() {
         console.error(error);
       });
   };
+
+  const fetchUserAccess = async () => {
+    const response = await fetch("api/fetchUserAccess", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ access_token }),
+    })
+      .then((res) => {
+        if (res.status === 200) {
+          return res.json();
+        }
+        throw new Error("Something went wrong");
+      })
+      .then((responseJson) => {
+        if (
+          responseJson.valid
+          ) {
+            setCookie('membership', false)
+            setMembership(false);
+          } else {
+            setCookie('membership', true)
+            setMembership(true);
+          }
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  };
+  if (user && !membership && !fetch_user){
+    setFetchUser(true);
+  }
 
   async function hitAPI() {
     if (!request.city || !request.days) return
@@ -129,9 +166,20 @@ export default function Home() {
   return (
     <main>
       <div className="app-container">
+        {user ? (
+          <div className="top-right">
+            <div className="user-info">{user ? `Signed in as ${user.name}` : ''}</div>
+            <button className="sign-out" onClick={() => signOutButton()}>Sign Out</button>
+          </div>
+        ) : (
+          <div className="top-right">
+            <button className="sign-out" onClick={() => signIn("whop")}>Sign in</button>
+          </div>
+        )}
+        <br/>
         <h1 style={styles.header}>GPTravel Advisor</h1>
         <div style={styles.formContainer} className="form-container">
-        {membership ? (
+        {membership && user ? (
             <>
             <input style={styles.input}  placeholder="City" onChange={e => setRequest(request => ({
               ...request, city: e.target.value
@@ -141,10 +189,12 @@ export default function Home() {
             }))} />
             <button className="input-button"  onClick={hitAPI}>Build Itinerary</button>
             </>
-            ) : (
+            ) : user ? (
               <a href={paidLink}>
                 <button className="input-button">Get Access for $5</button>
               </a>
+            ) : (
+                <button className="input-button" onClick={() => signIn("whop")}>Sign in with Whop</button>
             )}
         </div>
         <div className="results-container">

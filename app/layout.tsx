@@ -1,5 +1,7 @@
+"use client"
+
+import { SessionProvider } from 'next-auth/react'
 import './globals.css'
-import { AnalyticsWrapper } from './components/analytics';
 
 export default function RootLayout({
   children,
@@ -14,8 +16,9 @@ export default function RootLayout({
       */}
       <head />
       <body>
+        <SessionProvider>
         {children}
-        <AnalyticsWrapper />
+        </SessionProvider>
       </body>
     </html>
   )

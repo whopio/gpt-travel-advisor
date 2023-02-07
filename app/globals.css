@@ -95,6 +95,34 @@ input {
   width: 100%;
 }
 
+.sign-out {
+  margin-top: 5px;
+  border: none;
+  outline: none;
+  padding: 10px 5px;
+  cursor: pointer;
+  background-color: #c683ff;
+  color: #230041;
+  font-weight: bold;
+  border-radius: 20px;
+  transition: all .35s;
+  font-size: 18px;
+  width: 105px;
+  display: inline-block;
+}
+
+.user-info {
+  color: #ffffff;
+  display: inline-block;
+  margin-right: 10px;
+}
+
+.top-right {
+  float: right;
+  width: 100%;
+  text-align: right;
+}
+
 .app-container {
   padding: 20px;
 }
